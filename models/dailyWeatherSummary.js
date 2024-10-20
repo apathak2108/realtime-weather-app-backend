@@ -9,26 +9,17 @@ const dailyWeatherSummarySchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  averageTemperature: {
-    type: Number,
-    required: true,
-  },
-  maxTemperature: {
-    type: Number,
-    required: true,
-  },
-  minTemperature: {
-    type: Number,
-    required: true,
-  },
-  dominantCondition: {
-    type: String,
+  weatherData: {
+    type: Object,
     required: true,
   },
 });
 
 dailyWeatherSummarySchema.index({ date: 1, city: 1 }, { unique: true });
 
-const DailyWeatherSummary = mongoose.model("DailyWeatherSummary", dailyWeatherSummarySchema);
+const DailyWeatherSummary = mongoose.model(
+  "DailyWeatherSummary",
+  dailyWeatherSummarySchema
+);
 
 module.exports = DailyWeatherSummary;

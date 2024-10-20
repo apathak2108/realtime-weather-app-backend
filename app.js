@@ -23,7 +23,7 @@ app.get("/", (req, res) => {
   res.send("Weather Backend Server is running!");
 });
 
-cron.schedule("*/1 * * * *", async () => {
+cron.schedule("*/30 * * * *", async () => {
   try {
     console.log("Fetching weather data...");
     await fetchWeatherForAllCities();
@@ -33,7 +33,7 @@ cron.schedule("*/1 * * * *", async () => {
   }
 });
 
-cron.schedule("54 1 * * *", async () => {
+cron.schedule("19 7 * * *", async () => {
   try {
     console.log("Calculating daily weather summary...");
     await calculateDailySummary();
