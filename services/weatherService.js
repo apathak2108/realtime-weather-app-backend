@@ -50,13 +50,23 @@ const fetchWeatherForAllCities = async () => {
 
 const calculateDailySummary = async () => {
   const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const startOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  const endOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + 1
+  );
 
   for (const city of cities) {
     try {
-      const weatherData = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}`);
-      
+      const weatherData = await axios.get(
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}`
+      );
+
       const dailySummaryData = {
         date: startOfDay,
         city: city,
@@ -68,44 +78,85 @@ const calculateDailySummary = async () => {
         { $set: dailySummaryData },
         { upsert: true }
       );
-      console.log(`Daily summary for ${city} on ${startOfDay} saved/updated successfully.`);
+      console.log(
+        `Daily summary for ${city} on ${startOfDay} saved/updated successfully.`
+      );
     } catch (error) {
-      console.error(`Error fetching or saving data for ${city}:`, error.message);
+      console.error(
+        `Error fetching or saving data for ${city}:`,
+        error.message
+      );
     }
   }
 };
 
 const checkForAlerts = async (city, temperature) => {
-  const threshold = await Threshold.findOne({ city });
-  if (threshold && temperature > threshold.temperatureThreshold) {
-    console.log(
-      `Alert triggered for ${city}: Temperature ${temperature} exceeds threshold ${threshold.temperatureThreshold}`
-    );
-    const today = new Date();
-    const startOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-    const endOfDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + 1
-    );
-    await Weather.updateOne(
-      {
-        city,
-        date: {
-          $gte: startOfDay.getTime() / 1000,
-          $lt: endOfDay.getTime() / 1000,
+  try {
+    if (temperature === undefined) {
+      console.log(`Temperature for ${city} is undefined.`);
+      return;
+    }
+
+    const threshold = await Threshold.findOne({ city });
+
+    if (threshold && temperature > threshold.temperatureThreshold) {
+      console.log(
+        `Alert triggered for ${city}: Temperature ${temperature} exceeds threshold ${threshold.temperatureThreshold}`
+      );
+
+      const today = new Date();
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+      const endOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1
+      );
+
+      const updatedWeather = await Weather.updateOne(
+        {
+          city: city,
+          date: {
+            $gte: Math.floor(startOfDay.getTime() / 1000),
+            $lt: Math.floor(endOfDay.getTime() / 1000),
+          },
         },
-      },
-      { $set: { alertTriggered: true } }
-    );
+        { $set: { alertTriggered: true } }
+      );
+
+      if (updatedWeather.nModified > 0) {
+        console.log(
+          `Weather record for ${city} updated with alertTriggered flag.`
+        );
+
+        const recipientEmail = "ananyapathak190@gmail.com";
+        await sendAlertEmail(recipientEmail, city);
+
+        console.log(
+          `Alert email sent for ${city}. Temperature exceeded threshold ${threshold.temperatureThreshold}.`
+        );
+      } else {
+        console.log(
+          `No weather record found for ${city} on the current day to update.`
+        );
+      }
+    } else {
+      console.log(
+        `No alert triggered for ${city}. Current temperature (${temperature}°C) is below the threshold (${
+          threshold ? threshold.temperatureThreshold : "No threshold set"
+        }°C).`
+      );
+    }
+  } catch (error) {
+    console.error(`Error checking for alerts in ${city}:`, error);
   }
 };
 
 module.exports = {
   fetchWeatherForAllCities,
   calculateDailySummary,
+  checkForAlerts,
 };
